@@ -2,10 +2,12 @@ ARG BASE_IMAGE_URL
 ARG BASE_IMAGE_TAG
 FROM ${BASE_IMAGE_URL}:${BASE_IMAGE_TAG}
 
-RUN dnf upgrade -y && \
+RUN mv /etc/selinux /etc/selinux.tmp && \
+    dnf upgrade -y && \
     dnf install -y firewalld microshift && \
     systemctl enable microshift && \
-    dnf clean all
+    dnf clean all && \
+    mv /etc/selinux.tmp /etc/selinux
 
 # Mandatory firewall configuration
 RUN firewall-offline-cmd --zone=public --add-port=22/tcp && \
