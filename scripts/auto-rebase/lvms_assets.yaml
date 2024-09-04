@@ -1,0 +1,43 @@
+assets:
+
+  - dir: components/lvms/
+    src: lvms/amd64/
+    no_clean: True
+    files:
+      # Version Config Map
+      - file: topolvm-configmap_lvms-version.yaml
+      # CRDs
+      - file: topolvm.io_logicalvolumes.yaml
+      - file: lvm.topolvm.io_lvmclusters.yaml
+      - file: lvm.topolvm.io_lvmvolumegroupnodestatuses.yaml
+      - file: lvm.topolvm.io_lvmvolumegroups.yaml
+      # Extracted CSV RBAC Information
+      - file: lvms-operator_rbac.authorization.k8s.io_v1_clusterrole.yaml
+      - file: lvms-operator_rbac.authorization.k8s.io_v1_clusterrolebinding.yaml
+      - file: lvms-operator_rbac.authorization.k8s.io_v1_role.yaml
+      - file: lvms-operator_rbac.authorization.k8s.io_v1_rolebinding.yaml
+      - file: lvms-metrics_rbac.authorization.k8s.io_v1_role.yaml
+      - file: lvms-metrics_rbac.authorization.k8s.io_v1_rolebinding.yaml
+      - file: vg-manager_rbac.authorization.k8s.io_v1_clusterrole.yaml
+      - file: vg-manager_rbac.authorization.k8s.io_v1_clusterrolebinding.yaml
+      - file: vg-manager_rbac.authorization.k8s.io_v1_role.yaml
+      - file: vg-manager_rbac.authorization.k8s.io_v1_rolebinding.yaml
+      # Services
+      - file: lvms-operator_v1_serviceaccount.yaml
+      - file: vg-manager_v1_serviceaccount.yaml
+      - file: lvms-webhook-service_v1_service.yaml
+      - file: lvms-operator-metrics-service_v1_service.yaml
+      - file: vg-manager-metrics-service_v1_service.yaml
+      # Deployment
+      - file: lvms-operator_apps_v1_deployment.yaml
+      # Webhook
+      - file: lvms-operator_admissionregistration.k8s.io_v1_webhook.yaml
+      # Manual Namespace instead of OLM one
+      - file: topolvm-openshift-storage_namespace.yaml
+        ignore: "provided by MicroShift"
+      # Manual Storage Class instead of automatic LVMCluster creation
+      - file: topolvm_default-storage-class.yaml
+        ignore: "provided by MicroShift"
+      # LVMCluster instead of User-created LVMCluster
+      - file: lvms_default-lvmcluster.yaml
+        ignore: "provided by MicroShift"

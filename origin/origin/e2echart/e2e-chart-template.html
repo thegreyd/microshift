@@ -1,0 +1,524 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>EVENT_INTERVAL_TITLE_GOES_HERE</title>
+    <script src="https://unpkg.com/timelines-chart"></script>
+    <script src="https://d3js.org/d3-array.v1.min.js"></script>
+    <script src="https://d3js.org/d3-collection.v1.min.js"></script>
+    <script src="https://d3js.org/d3-color.v1.min.js"></script>
+    <script src="https://d3js.org/d3-format.v1.min.js"></script>
+    <script src="https://d3js.org/d3-interpolate.v1.min.js"></script>
+    <script src="https://d3js.org/d3-time.v1.min.js"></script>
+    <script src="https://d3js.org/d3-time-format.v2.min.js"></script>
+    <script src="https://d3js.org/d3-scale.v2.min.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+          integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+            integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+            crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"
+            integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+            crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+            integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+            crossorigin="anonymous"></script>
+</head>
+<body>
+
+<div id="search" class="form-control-lg">
+    <form>
+        <input class="form-control" type="text" id="filterInput" placeholder="RegExp Filter">
+    </form>
+</div>
+
+<div id="chart"></div>
+
+<div class="modal" id="myModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Resource</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <pre><code id="myModalContent"></code></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    var eventIntervals = EVENT_INTERVAL_JSON_GOES_HERE
+</script>
+
+<script>
+    // Re-render the chart with input as a regexp. Timeout for event debouncing.
+    $('#filterInput').on('input', (e) => {
+        var $this = $(this);
+        clearTimeout($this.data('timeout'));
+        $this.data('timeout', setTimeout(() => {
+            document.getElementById("chart").innerHTML = "";
+            renderChart(new RegExp(e.target.value))
+        }, 250));
+    });
+
+    // Prevent page refresh from pressing enter in input box
+    $('#filterInput').keypress((e) => {
+        if (event.which == '13') {
+            event.preventDefault();
+        }
+    });
+
+    function isOperatorAvailable(eventInterval) {
+        if (eventInterval.locator.includes("clusteroperator/") && eventInterval.message.includes("condition/Available") && eventInterval.message.includes("status/False")) {
+            return true
+        }
+        return false
+    }
+
+    function isOperatorDegraded(eventInterval) {
+        if (eventInterval.locator.includes("clusteroperator/") && eventInterval.message.includes("condition/Degraded") && eventInterval.message.includes("status/True")) {
+            return true
+        }
+        return false
+    }
+
+    function isOperatorProgressing(eventInterval) {
+        if (eventInterval.locator.includes("clusteroperator/") && eventInterval.message.includes("condition/Progressing") && eventInterval.message.includes("status/True")) {
+            return true
+        }
+        return false
+    }
+
+    // When an interval in the openshift-etcd namespace had a reason of LeaderFound, LeaderLost,
+    // LeaderElected, or LeaderMissing, tempSource was set to 'EtcdLeadership'.
+    function isEtcdLeadership(eventInterval) {
+        if (eventInterval.tempSource == 'EtcdLeadership') {
+            return true
+        }
+        return false
+    }
+
+    function isPodLog(eventInterval) {
+        if (eventInterval.tempSource == 'PodLog') {
+            return true
+        }
+        if (eventInterval.tempSource == 'EtcdLog') {
+            return true
+        }
+        return false
+    }
+
+    function isInterestingOrPathological(eventInterval) {
+        if (eventInterval.tempSource == 'KubeEvent' && eventInterval.message.includes("pathological/true")) {
+            return true
+        }
+        return false
+    }
+
+    function isE2EFailed(eventInterval) {
+        if (eventInterval.locator.includes("e2e-test/") && eventInterval.message.includes("finished As \"Failed")) {
+            return true
+        }
+        return false
+    }
+
+    function isE2EFlaked(eventInterval) {
+        if (eventInterval.locator.includes("e2e-test/") && eventInterval.message.includes("finished As \"Flaked")) {
+            return true
+        }
+        return false
+    }
+
+    function isE2EPassed(eventInterval) {
+        if (eventInterval.locator.includes("e2e-test/") && eventInterval.message.includes("finished As \"Passed")) {
+            return true
+        }
+        return false
+    }
+
+    function isGracefulShutdownActivity(eventInterval) {
+        return (eventInterval.tempSource === "APIServerGracefulShutdown")
+    }
+
+    function isEndpointConnectivity(eventInterval) {
+        if (!eventInterval.message.includes("reason/DisruptionBegan") && !eventInterval.message.includes("reason/DisruptionSamplerOutageBegan")){
+            return false
+        }
+        if (eventInterval.locator.includes("disruption/")) {
+            return true
+        }
+        if (eventInterval.locator.includes("ns/e2e-k8s-service-lb-available")) {
+            return true
+        }
+        if (eventInterval.locator.includes(" route/")) {
+            return true
+        }
+
+        return false
+    }
+
+    function isNodeState(eventInterval) {
+        return eventInterval.tempStructuredLocator.type === "Node" &&
+            (eventInterval.tempStructuredMessage.reason === "NodeUpdate" ||
+                eventInterval.tempStructuredMessage.reason === "NotReady");
+    }
+
+    function isCloudMetrics(eventInterval) {
+        return eventInterval.tempSource === "CloudMetrics";
+    }
+
+    function isAlert(eventInterval) {
+        if (eventInterval.locator.includes("alert/")) {
+            return true
+        }
+        return false
+    }
+
+    function pathologicalEvents(item) {
+        if (item.message.includes("pathological/true")) {
+            if (item.message.includes("interesting/true")) {
+                return [item.locator, ` (pathological known)`, "PathologicalKnown"];
+            } else {
+                return [item.locator, ` (pathological new)`, "PathologicalNew"];
+            }
+        }
+        // TODO: hack that can likely be removed when we get to structured intervals for these
+        if (item.message.includes("interesting/true") && item.message.includes("pod sandbox")) {
+            return [item.locator, ` (pod sandbox)`, "PodSandbox"];
+        }
+	}
+
+    function podLogs(item) {
+        if (item.level == "Warning") {
+            return [item.locator, ` (pod log)`, "PodLogWarning"];
+        }
+        if (item.level == "Error") {
+            return [item.locator, ` (pod log)`, "PodLogError"];
+        }
+        return [item.locator, ` (pod log)`, "PodLogInfo"];
+    }
+
+
+    const rePhase = new RegExp("(^| )phase/([^ ]+)")
+    function nodeStateValue(item) {
+        let roles = ""
+        if (item.tempStructuredMessage.annotations.hasOwnProperty('roles')) {
+            roles = item.tempStructuredMessage.annotations.roles
+        }
+
+        if (item.tempStructuredMessage.reason === 'NotReady') {
+            return [item.locator, ` (${roles})`, "NodeNotReady"]
+        }
+        let m = item.tempStructuredMessage.annotations.phase;
+        return [item.locator, ` (${roles})`, m];
+    }
+
+    function etcdLeadershipLogsValue(item) {
+
+        // If source is isEtcdLeadership, the term is always there.
+        const term = item.tempStructuredMessage.annotations['term']
+
+        // We are only charting the intervals with a node.
+        const nodeVal = item.tempStructuredLocator.keys['node']
+
+        // Get etcd-member value (this will be present for a leader change).
+        let etcdMemberVal = item.tempStructuredLocator.keys['etcd-member'] || ''
+        if (etcdMemberVal.length > 0) {
+            etcdMemberVal = `etcd-member/${etcdMemberVal} `
+        }
+
+        let reason = item.tempStructuredMessage.reason
+        let color = 'EtcdOther'
+        if (reason.length > 0) {
+            color = reason
+            reason = `reason/${reason}`
+        }
+        return [`node/${nodeVal} ${etcdMemberVal} term/${term}`, ` ${reason}`, color ]
+    }
+
+    function cloudMetricsValue(item) {
+        return [item.locator, "", "CloudMetric"];
+    }
+
+    function alertSeverity(item) {
+        // the other types can be pending, so check pending first
+        let pendingIndex = item.message.indexOf("pending")
+        if (pendingIndex != -1) {
+            return [item.locator, "", "AlertPending"]
+        }
+
+        let infoIndex = item.message.indexOf("info")
+        if (infoIndex != -1) {
+            return [item.locator, "", "AlertInfo"]
+        }
+        let warningIndex = item.message.indexOf("warning")
+        if (warningIndex != -1) {
+            return [item.locator, "", "AlertWarning"]
+        }
+        let criticalIndex = item.message.indexOf("critical")
+        if (criticalIndex != -1) {
+            return [item.locator, "", "AlertCritical"]
+        }
+
+        // color as critical if nothing matches so that we notice that something has gone wrong
+        return [item.locator, "", "AlertCritical"]
+    }
+
+    function apiserverDisruptionValue(item) {
+        // TODO: isolate DNS error into CIClusterDisruption
+        return [item.locator, "", "Disruption"]
+    }
+
+    function apiserverShutdownValue(item) {
+        // TODO: isolate DNS error into CIClusterDisruption
+        return [item.locator, "", "GracefulShutdownInterval"]
+    }
+
+    function disruptionValue(item) {
+        // We classify these disruption samples with this message if it thinks
+        // it looks like a problem in the CI cluster running the tests, not the cluster under test.
+        // (typically DNS lookup problems)
+        let ciClusterDisruption = item.message.indexOf("likely a problem in cluster running tests")
+        if (ciClusterDisruption != -1) {
+            return [item.locator, "", "CIClusterDisruption"]
+        }
+        return [item.locator, "", "Disruption"]
+    }
+
+    function apiserverShutdownEventsValue(item) {
+        // TODO: isolate DNS error into CIClusterDisruption
+        return [item.locator, "", "GracefulShutdownWindow"]
+    }
+
+    function getDurationString(durationSeconds) {
+        const seconds = durationSeconds % 60;
+        const minutes = Math.floor(durationSeconds/60);
+        var durationString = "[";
+        if (minutes !== 0) {
+            durationString += minutes + "m"
+        }
+        durationString += seconds + "s]";
+        return durationString;
+    }
+
+    function defaultToolTip(item) {
+        let tt = item.message
+        if ('tempSource' in item) {
+            tt = tt + " source/" + item.tempSource
+        }
+        if ('display' in item) {
+            tt = tt + " display/" + item.display
+        }
+        tt = tt + " " + getDurationString(((new Date(item.to)).getTime() - (new Date(item.from).getTime()))/1000);
+        return tt
+    }
+
+    function createTimelineData(timelineVal, timelineData, rawEventIntervals, preconditionFunc, regex) {
+        const data = {}
+        var now = new Date();
+        var earliest = rawEventIntervals.items.reduce(
+            (accumulator, currentValue) => !currentValue.from || accumulator < new Date(currentValue.from) ? accumulator : new Date(currentValue.from),
+            new Date(now.getTime() + 1),
+        );
+        var latest = rawEventIntervals.items.reduce(
+            (accumulator, currentValue) => !currentValue.to || accumulator > new Date(currentValue.to) ? accumulator : new Date(currentValue.to),
+            new Date(now.getTime() - 1),
+        );
+        rawEventIntervals.items.forEach((item) => {
+            if (!preconditionFunc(item)) {
+                return
+            }
+            var startDate = new Date(item.from)
+            if (!item.from) {
+                startDate = earliest;
+            }
+            var endDate = new Date(item.to)
+            if (!item.to) {
+                endDate = latest
+            }
+            let label = item.locator
+            let sub = ""
+            let val = timelineVal
+            if (typeof val === "function") {
+                [label, sub, val] = timelineVal(item)
+            }
+            let section = data[label]
+            if (!section) {
+                section = {};
+                data[label] = section
+            }
+            let ranges = section[sub]
+            if (!ranges) {
+                ranges = [];
+                section[sub] = ranges
+            }
+            ranges.push({
+                timeRange: [startDate, endDate],
+                val: val,
+                labelVal: defaultToolTip(item)
+            });
+        });
+        for (const label in data) {
+            const section = data[label]
+            for (const sub in section) {
+                if (regex == null || (regex != null && regex.test(label))) {
+                    const data = section[sub];
+                    const totalDurationSeconds = data.reduce(
+                        (prev, curr) => prev + (curr.timeRange[1].getTime() - curr.timeRange[0].getTime())/1000,
+                        0);
+
+                    timelineData.push({label: label + sub + " " + getDurationString(totalDurationSeconds), data: data})
+                }
+            }
+        }
+    }
+
+    function isEtcdLeadershipAndNotEmpty(item) {
+        if (isEtcdLeadership(item)) {
+
+            // Don't chart the ones where the node is empty.
+            const node = item.tempStructuredLocator.keys['node'] || ''
+            if (node.length > 0) {
+                return true
+            }
+        }
+        return false
+    }
+
+    function renderChart(regex) {
+        var loc = window.location.href;
+
+        var timelineGroups = []
+        timelineGroups.push({group: "operator-unavailable", data: []})
+        createTimelineData("OperatorUnavailable", timelineGroups[timelineGroups.length - 1].data, eventIntervals, isOperatorAvailable, regex)
+
+        timelineGroups.push({group: "operator-degraded", data: []})
+        createTimelineData("OperatorDegraded", timelineGroups[timelineGroups.length - 1].data, eventIntervals, isOperatorDegraded, regex)
+
+        timelineGroups.push({group: "operator-progressing", data: []})
+        createTimelineData("OperatorProgressing", timelineGroups[timelineGroups.length - 1].data, eventIntervals, isOperatorProgressing, regex)
+
+        timelineGroups.push({group: "node-state", data: []})
+        createTimelineData(nodeStateValue, timelineGroups[timelineGroups.length - 1].data, eventIntervals, isNodeState, regex)
+        // Sort the node-state intervals so rows are grouped by node
+        timelineGroups[timelineGroups.length - 1].data.sort(function (e1 ,e2){
+            return e1.label < e2.label ? -1 : e1.label > e2.label;
+        })
+
+        timelineGroups.push({group: "disruption", data: []})
+        createTimelineData(disruptionValue, timelineGroups[timelineGroups.length - 1].data, eventIntervals, isEndpointConnectivity, regex)
+
+        timelineGroups.push({group: "apiserver-shutdown", data: []})
+        createTimelineData(apiserverShutdownValue, timelineGroups[timelineGroups.length - 1].data, eventIntervals, isGracefulShutdownActivity, regex)
+
+        timelineGroups.push({ group: "etcd-leaders", data: [] })
+        createTimelineData(etcdLeadershipLogsValue, timelineGroups[timelineGroups.length - 1].data, eventIntervals, isEtcdLeadershipAndNotEmpty, regex)
+
+        timelineGroups.push({group: "cloud-metrics", data: []})
+        createTimelineData(cloudMetricsValue, timelineGroups[timelineGroups.length - 1].data, eventIntervals, isCloudMetrics, regex)
+
+        timelineGroups.push({group: "pod-logs", data: []})
+        createTimelineData(podLogs, timelineGroups[timelineGroups.length - 1].data, eventIntervals, isPodLog, regex)
+
+        timelineGroups.push({group: "alerts", data: []})
+        createTimelineData(alertSeverity, timelineGroups[timelineGroups.length - 1].data, eventIntervals, isAlert, regex)
+        // leaving this for posterity so future me (or someone else) can try it, but I think ordering by name makes the
+        // patterns shown by timing hide and timing appears more relevant to my eyes.
+        // sort alerts alphabetically for display purposes, but keep the json itself ordered by time.
+        // timelineGroups[timelineGroups.length - 1].data.sort(function (e1 ,e2){
+        //     if (e1.label.includes("alert") && e2.label.includes("alert")) {
+        //         return e1.label < e2.label ? -1 : e1.label > e2.label;
+        //     }
+        //     return 0
+        // })
+
+        timelineGroups.push({group: "e2e-test-failed", data: []})
+        createTimelineData("Failed", timelineGroups[timelineGroups.length - 1].data, eventIntervals, isE2EFailed, regex)
+
+        timelineGroups.push({group: "e2e-test-flaked", data: []})
+        createTimelineData("Flaked", timelineGroups[timelineGroups.length - 1].data, eventIntervals, isE2EFlaked, regex)
+
+        timelineGroups.push({group: "e2e-test-passed", data: []})
+        createTimelineData("Passed", timelineGroups[timelineGroups.length - 1].data, eventIntervals, isE2EPassed, regex)
+
+        timelineGroups.push({group: "pathological-events", data: []})
+        createTimelineData(pathologicalEvents, timelineGroups[timelineGroups.length - 1].data, eventIntervals, isInterestingOrPathological, regex)
+
+        var segmentFunc = function (segment) {
+            // for (var i in data) {
+            //     if (data[i].group == segment.group) {
+            //         var groupdata = data[i].data
+            //         for (var j in groupdata) {
+            //             if (groupdata[j].label == segment.label) {
+            //                 labeldata = groupdata[j].data
+            //                 for (var k in labeldata) {
+            //                     var startDate = new Date(labeldata[k].timeRange[0])
+            //                     var endDate = new Date(labeldata[k].timeRange[1])
+            //                     if (startDate.getTime() == segment.timeRange[0].getTime() &&
+            //                         endDate.getTime() == segment.timeRange[1].getTime()) {
+            //                         $('#myModalContent').text(labeldata[k].extended)
+            //                         $('#myModal').modal()
+            //                     }
+            //                 }
+            //             }
+            //         }
+            //     }
+            // }
+        }
+
+        const el = document.querySelector('#chart');
+        const myChart = TimelinesChart();
+        var ordinalScale = d3.scaleOrdinal()
+            .domain([
+                'InterestingEvent', 'PathologicalKnown', "PathologicalNew", "PodSandbox", // interesting and pathological events
+                'AlertInfo', 'AlertPending', 'AlertWarning', 'AlertCritical', // alerts
+                'OperatorUnavailable', 'OperatorDegraded', 'OperatorProgressing', // operators
+                'Update', 'Drain', 'Reboot', 'OperatingSystemUpdate', 'NodeNotReady', // nodes
+                'Passed', 'Skipped', 'Flaked', 'Failed',  // tests
+                'PodCreated', 'PodScheduled', 'PodTerminating','ContainerWait', 'ContainerStart', 'ContainerNotReady', 'ContainerReady', 'ContainerReadinessFailed', 'ContainerReadinessErrored',  'StartupProbeFailed', // pods
+                'CIClusterDisruption', 'Disruption', // disruption
+                'Degraded', 'Upgradeable', 'False', 'Unknown',
+                'PodLogInfo', 'PodLogWarning', 'PodLogError',
+                'EtcdOther', 'EtcdLeaderFound', 'EtcdLeaderLost', 'EtcdLeaderElected', 'EtcdLeaderMissing'])
+            .range([
+                '#6E6E6E', '#0000ff', '#d0312d', '#ffa500', // pathological and interesting events
+                '#fada5e','#fada5e','#ffa500', '#d0312d',  // alerts
+                '#d0312d', '#ffa500', '#fada5e', // operators
+                '#1e7bd9', '#4294e6', '#6aaef2', '#96cbff', '#fada5e', // nodes
+                '#3cb043', '#ceba76', '#ffa500', '#d0312d', // tests
+                '#96cbff', '#1e7bd9', '#ffa500', '#ca8dfd', '#9300ff', '#fada5e','#3cb043', '#d0312d', '#d0312d', '#c90076', // pods
+                '#96cbff', '#d0312d', // disruption
+                '#b65049', '#32b8b6', '#ffffff', '#bbbbbb',
+                '#96cbff', '#fada5e', '#d0312d',
+                '#d3d3de', '#03fc62', '#fc0303', '#fada5e', '#8c5efa']); // EtcdLeadership
+        myChart.
+        data(timelineGroups).
+        useUtc(true).
+        zQualitative(true).
+        enableAnimations(false).
+        leftMargin(240).
+        rightMargin(1550).
+        maxLineHeight(20).
+        maxHeight(10000).
+        zColorScale(ordinalScale).
+        zoomX([new Date(eventIntervals.items[0].from), new Date(eventIntervals.items[eventIntervals.items.length - 1].to)]).
+        onSegmentClick(segmentFunc)
+        (el);
+
+
+        // force a minimum width for smaller devices (which otherwise get an unusable display)
+        setTimeout(() => { if (myChart.width() < 3100) { myChart.width(3100) }}, 1)
+    }
+
+    renderChart(null)
+</script>
+</body>
+</html>

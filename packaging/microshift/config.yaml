@@ -1,0 +1,136 @@
+apiServer:
+    # Kube apiserver advertise address to work around the certificates issue
+    # when requiring external access using the node IP. This will turn into
+    # the IP configured in the endpoint slice for kubernetes service. Must be
+    # a reachable IP from pods. Defaults to service network CIDR first
+    # address.
+    advertiseAddress: ""
+    auditLog:
+        # maxFileAge is the maximum number of days to retain old audit log files
+        maxFileAge: 0
+        # maxFileSize is the maximum size in megabytes of the audit log file before it gets rotated
+        maxFileSize: 200
+        # maxFiles is the maximum number of rotated audit log files to retain
+        maxFiles: 10
+        # profile is the OpenShift profile specifying a specific logging policy
+        profile: Default
+    # List of custom certificates used to secure requests to specific host names
+    namedCertificates:
+        - certPath: ""
+          keyPath: ""
+          names:
+            - ""
+    # SubjectAltNames added to API server certs
+    subjectAltNames:
+        - ""
+debugging:
+    # Valid values are: "Normal", "Debug", "Trace", "TraceAll".
+    # Defaults to "Normal".
+    logLevel: Normal
+dns:
+    # baseDomain is the base domain of the cluster. All managed DNS records will
+    # be sub-domains of this base.
+
+
+    # For example, given the base domain `example.com`, router exposed
+    # domains will be formed as `*.apps.example.com` by default,
+    # and API service will have a DNS entry for `api.example.com`,
+    # as well as "api-int.example.com" for internal k8s API access.
+
+
+    # Once set, this field cannot be changed.
+    # example:
+    #   microshift.example.com
+    baseDomain: example.com
+etcd:
+    # Set a memory limit on the etcd process; etcd will begin paging
+    # memory when it gets to this value. 0 means no limit.
+    memoryLimitMB: 0
+ingress:
+    # List of IP addresses and NIC names where the router will be listening. The NIC
+    # names get translated to all their configured IPs dynamically. Defaults to the
+    # configured IPs in the host at MicroShift start.
+    listenAddress:
+        - ""
+    ports:
+        # Default router http port. Must be in range 1-65535.
+        http: 80
+        # Default router https port. Must be in range 1-65535.
+        https: 443
+    routeAdmissionPolicy:
+        # Describes how host name claims across namespaces should be handled.
+
+
+        # Value must be one of:
+
+
+        # - Strict: Do not allow routes in different namespaces to claim the same host.
+
+
+        # - InterNamespaceAllowed: Allow routes to claim different paths of the same
+        #   host name across namespaces.
+
+
+        # If empty, the default is InterNamespaceAllowed.
+        namespaceOwnership: InterNamespaceAllowed
+    # Default router status, can be Managed or Removed.
+    status: Managed
+# Settings specified in this section are transferred as-is into the Kubelet config.
+kubelet:
+manifests:
+    # The locations on the filesystem to scan for kustomization
+    # files to use to load manifests. Set to a list of paths to scan
+    # only those paths. Set to an empty list to disable loading
+    # manifests. The entries in the list can be glob patterns to
+    # match multiple subdirectories.
+    kustomizePaths:
+        - /usr/lib/microshift/manifests
+        - /usr/lib/microshift/manifests.d/*
+        - /etc/microshift/manifests
+        - /etc/microshift/manifests.d/*
+network:
+    # IP address pool to use for pod IPs.
+    # This field is immutable after installation.
+    clusterNetwork:
+        - 10.42.0.0/16
+    # IP address pool for services.
+    # Currently, we only support a single entry here.
+    # This field is immutable after installation.
+    serviceNetwork:
+        - 10.43.0.0/16
+    # The port range allowed for Services of type NodePort.
+    # If not specified, the default of 30000-32767 will be used.
+    # Such Services without a NodePort specified will have one
+    # automatically allocated from this range.
+    # This parameter can be updated after the cluster is
+    # installed.
+    serviceNodePortRange: 30000-32767
+node:
+    # If non-empty, will use this string to identify the node instead of the hostname
+    hostnameOverride: ""
+    # IP address of the node, passed to the kubelet.
+    # If not specified, kubelet will use the node's default IP address.
+    nodeIP: ""
+    # IPv6 address of the node, passed to the kubelet. This parameter
+    # is only allowed when dual stack deployment is configured.
+    nodeIPv6: ""
+# Storage represents a subfield of the MicroShift config data structure. Its purpose to provide a user
+# facing interface to control whether MicroShift should deploy LVMS on startup.
+storage:
+    # Driver is a user defined string value matching one of the above CSIStorageDriver values. MicroShift uses this
+    # value to decide whether to deploy the LVMS operator. An unset field defaults to "" during yaml parsing, and thus
+    # could mean that the cluster has been upgraded. In order to support the existing out-of-box behavior, MicroShift
+    # assumes an empty string to mean the storage driver should be deployed.
+    # Allowed values are: unset or one of ["", "lvms", "none"]
+    driver: ""
+    # OptionalCSIComponents is a user defined slice of CSIComponent values. These value tell MicroShift which
+    # additional, non-driver, CSI controllers to deploy on start. MicroShift will deploy snapshot controller
+    # and webhook when no components are specified. This preserves the current deployment behavior of existing
+    # clusters. Users must set `.storage.optionalCsiComponents: []` to explicitly tell MicroShift not to deploy any CSI
+    # components. The CSI Driver is excluded as it is typically deployed via the same manifest as the accompanying
+    # storage driver. Like CSIStorageDriver, uninstallation is not supported as this can lead to orphaned storage
+    # objects.
+    # Allowed values are: unset, [], or one or more of ["snapshot-controller", "snapshot-webhook"]
+    optionalCsiComponents:
+        - ""
+

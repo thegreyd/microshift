@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# Set SSH_PUBLIC_KEY to the filename of the ssh key to be used to
+# access the VMs created.
+# shellcheck disable=SC2034
+SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY:-${HOME}/.ssh/id_rsa.pub}
+
+# Set SSH_PRIVATE_KEY to the filename of the matching ssh key,
+# if any. Set it to an empty string to use ssh-agent.
+#SSH_PRIVATE_KEY=${SSH_PRIVATE_KEY:-${HOME}/.ssh/id_rsa}
+
+# Disable sos report collection. This can speed up setup in a
+# local environment where sos can be run manually when necessary.
+#SKIP_SOS=true
+
+# Whether to add a VNC graphics console to hosts. This is useful in
+# local developer settings where cockpit can be used to login to the
+# host. Set to `true` to enable. Defaults to `false`.
+#VNC_CONSOLE=true
+
+# SUBSCRIPTION_MANAGER_PLUGIN should be the full path to a bash script
+# that can be sourced to provide a function called
+# `subscription_manager_register`. See
+# `load_subscription_manager_plugin` in scenario.sh for details.
+# SUBSCRIPTION_MANAGER_PLUGIN="${SCRIPTDIR}/subscription_manager_register.sh"

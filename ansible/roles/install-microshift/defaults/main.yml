@@ -1,0 +1,18 @@
+---
+# install-microshift default vars
+
+etcd_dir: "{{ ansible_env.HOME }}/etcd"
+etcd_repo: https://github.com/openshift/etcd.git
+
+microshift_dir: "{{ ansible_env.HOME }}/microshift"
+microshift_repo: https://github.com/openshift/microshift.git
+microshift_rpms: []
+microshift_version: 4.14.0-ec.4-202308011235.p0
+
+du_dirs:
+  - /
+  - /var/
+  - /var/lib/
+  - /var/lib/containers/storage/
+  - /usr/
+  - /usr/bin/*
