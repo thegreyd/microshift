@@ -4,7 +4,7 @@ FROM registry.redhat.io/rhel9/rhel-bootc:9.4-1725286996
 
 # Start Konflux-specific steps
 RUN mkdir -p /tmp/yum_temp; mv /etc/yum.repos.d/*.repo /tmp/yum_temp/ || true
-COPY .oit/signed.repo /etc/yum.repos.d/
+COPY .oit/unsigned.repo /etc/yum.repos.d/
 ADD https://certs.corp.redhat.com/certs/Current-IT-Root-CAs.pem /tmp
 # End Konflux-specific steps
 ENV __doozer=update BUILD_RELEASE=202409040953.p0.g1c4e745.assembly.microshift.el9 BUILD_VERSION=v4.18.0 OS_GIT_MAJOR=4 OS_GIT_MINOR=18 OS_GIT_PATCH=0 OS_GIT_TREE_STATE=clean OS_GIT_VERSION=4.18.0-202409040953.p0.g1c4e745.assembly.microshift.el9 SOURCE_GIT_TREE_STATE=clean __doozer_group=openshift-4.18 __doozer_key=microshift-bootc __doozer_version=v4.18.0 
