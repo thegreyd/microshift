@@ -16,4 +16,15 @@
 # You should have one top level item for each architecture being built. Most
 # likely this will be x86_64 and ppc64le initially.
 ---
-{}
+aarch64:
+- fast-datapath-for-rhel-9-aarch64-rpms
+- rhocp-4.18-for-rhel-9-aarch64-rpms
+ppc64le:
+- fast-datapath-for-rhel-9-ppc64le-rpms
+- rhocp-4.18-for-rhel-9-ppc64le-rpms
+s390x:
+- fast-datapath-for-rhel-9-s390x-rpms
+- rhocp-4.18-for-rhel-9-s390x-rpms
+x86_64:
+- fast-datapath-for-rhel-9-x86_64-rpms
+- rhocp-4.18-for-rhel-9-x86_64-rpms
