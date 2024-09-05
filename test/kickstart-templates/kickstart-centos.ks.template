@@ -1,0 +1,19 @@
+%include /main-prologue.cfg
+%include /main-network.cfg
+%include /main-cdrom.cfg
+
+%post --log=/dev/console --erroronfail
+
+%include /post-microshift.cfg
+%include /post-containers.cfg
+%include /post-system.cfg
+%include /post-network.cfg
+
+%include /post-cos9rpm.cfg
+# Greenboot configuration must come after RPM install to avoid
+# /etc/greenboot/greenboot.conf overwrite by the package update
+%include /post-greenboot.cfg
+
+%end
+
+%include /onerror-logs.cfg

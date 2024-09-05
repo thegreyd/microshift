@@ -1,0 +1,9 @@
+---
+# setup-localhost defaults
+
+known_hosts:
+  - '^localhost'
+  - '^microshift-'
+local_packages:
+  - python3-kubernetes
+microshift_pass: microshift

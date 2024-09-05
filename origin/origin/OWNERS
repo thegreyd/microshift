@@ -1,0 +1,26 @@
+# See the OWNERS docs at https://go.k8s.io/owners
+
+filters:
+  ".*":
+    reviewers:
+    - deads2k
+    - sjenning
+    - soltysh
+    - stlaz
+    - p0lyn0mial
+    approvers:
+    - DennisPeriquet
+    - dgoodwin
+    - neisw
+    - stbenjam
+    - xueqzhan
+  "^\\.go.(mod|sum)$":
+    labels:
+    - "vendor-update"
+  "^vendor/.*":
+    labels:
+    - "vendor-update"
+
+# This is a Red Hat extension, mapping the Git repository to an OpenShift Bugzilla component:
+# https://bugzilla.redhat.com/enter_bug.cgi?product=OpenShift%20Container%20Platform
+component: "Test Framework"

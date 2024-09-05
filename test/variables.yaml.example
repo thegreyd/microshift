@@ -1,0 +1,13 @@
+# USHIFT_HOST: MicroShift host, can be a name or IP
+USHIFT_HOST: microshift
+# USHIFT_USER: User to log into MicroShift's host
+USHIFT_USER: microshift
+# SSH Private key to use when logging into MicroShift's host.
+# Set this variable to "" to use ssh agent.
+#SSH_PRIV_KEY: ""
+SSH_PRIV_KEY: /home/microshift/.ssh/id_rsa
+# SSH port to use when connecting to MicroShift's host.
+SSH_PORT: 22
+# API port, in case the connection is through a forwarded port.
+# Defaults to whatever is in the kubeconfig file.
+#API_PORT: 6443

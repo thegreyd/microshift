@@ -1,0 +1,87 @@
+---
+# manage-repos tasks
+
+- name: RHEL tasks
+  block:
+  - name: subscription-manager tasks
+    block:
+      - name: check if we have subscription-manager installed
+        ansible.builtin.command: which subscription-manager
+        register: sm_present
+        ignore_errors: true
+
+      - name: install subscription-manager
+        ansible.builtin.dnf:
+          name:
+          - subscription-manager
+        when: sm_present.rc != 0
+
+      - name: register host with subscription manager
+        community.general.redhat_subscription:
+          state: present
+          username: "{{ rhel_username }}"
+          password: "{{ rhel_password }}"
+
+      - name: enable repo management from subscription-manager
+        ansible.builtin.command: subscription-manager config --rhsm.manage_repos=1
+    when: manage_subscription
+
+  - name: slurp redhat-release
+    ansible.builtin.slurp:
+      src: /etc/redhat-release
+    register: redhat_release_slurp
+
+  - name: set beta release of RHEL
+    ansible.builtin.set_fact:
+      rhel_beta: beta-
+    when: "'Beta' in (redhat_release_slurp['content'] | b64decode)"
+
+  - name: set microshift_prerelease if microshift_version is a prerelease
+    ansible.builtin.set_fact:
+      microshift_prerelease: "{{ 'rc' in microshift_version or 'ec' in microshift_version }}"
+
+  - block:
+    - name: check if microshift_version is valid for pre-release
+      ansible.builtin.uri:
+        url: "{{ ocpbeta_base_url }}"
+        method: GET
+        status_code: 200
+        timeout: 5
+
+    - name: install microshift mirror repo for pre-releases
+      ansible.builtin.template:
+        src: ocpbeta.repo.j2
+        dest: /etc/yum.repos.d/{{ ocp_repo_name }}.repo
+    when:
+      - microshift_prerelease
+      - not build_microshift
+
+  - name: overwrite ocp_version if microshift_prerelease
+    ansible.builtin.set_fact:
+      ocp_version: "{{ ocp_version.split('.')[0] }}.{{ (ocp_version.split('.')[1] | int) - 1 }}"
+    when: microshift_prerelease
+
+  - name: enable required repos for microshift
+    community.general.rhsm_repository:
+      name: "{{ rhel_repos }}"
+
+  - name: install EPEL repo
+    ansible.builtin.dnf:
+      name: "https://dl.fedoraproject.org/pub/epel/epel-release-latest-{{ ansible_distribution_major_version }}.noarch.rpm"
+      disable_gpg_check: true
+      state: present
+  when: ansible_distribution == "RedHat"
+
+- name: gather the package facts
+  ansible.builtin.package_facts:
+    manager: auto
+
+- name: pbench-agent is installed
+  ansible.builtin.set_fact:
+    pbench_installed: true
+  when: "'pbench-agent' in ansible_facts.packages"
+
+- name: pbench-agent is not installed
+  ansible.builtin.set_fact:
+    pbench_installed: false
+  when: "'pbench-agent' not in ansible_facts.packages"
