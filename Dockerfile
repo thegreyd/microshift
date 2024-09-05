@@ -1,5 +1,7 @@
 FROM quay.io/yuxzhu/test-ocp-v4-art-konflux-dev:v4.18.0-202409050953.p0.gc48c8bc.assembly.microshift.el9
 
+USER 0
+
 # Start Konflux-specific steps
 RUN mkdir -p /tmp/yum_temp; mv /etc/yum.repos.d/*.repo /tmp/yum_temp/ || true
 COPY .oit/unsigned.repo /etc/yum.repos.d/
