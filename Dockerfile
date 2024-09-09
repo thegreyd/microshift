@@ -1,4 +1,4 @@
-FROM registry.redhat.io/rhel9/rhel-bootc:9.4-latest
+FROM registry.redhat.io/rhel9/rhel-bootc:latest
 
 # Start Konflux-specific steps
 RUN mkdir -p /tmp/yum_temp; mv /etc/yum.repos.d/*.repo /tmp/yum_temp/ || true
