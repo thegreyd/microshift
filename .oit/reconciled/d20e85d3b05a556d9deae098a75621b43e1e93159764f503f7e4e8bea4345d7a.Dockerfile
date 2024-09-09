@@ -1,4 +1,4 @@
-FROM replaced-by-art
+FROM ${BASE_IMAGE_URL}:${BASE_IMAGE_TAG}
 
 RUN mv /etc/selinux /etc/selinux.tmp && \
     dnf upgrade -y && \
