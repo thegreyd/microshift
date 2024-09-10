@@ -18,7 +18,7 @@ ENV __doozer=merge OS_GIT_COMMIT=cf43442 OS_GIT_VERSION=4.18.0-202409100953.p0.g
 RUN mv /etc/selinux /etc/selinux.tmp && dnf upgrade -y && \
     dnf install -y firewalld microshift && \
     systemctl enable microshift && \
-    dnf clean all
+    dnf clean all && mv /etc/selinux.tmp /etc/selinux
 
 # Mandatory firewall configuration
 RUN firewall-offline-cmd --zone=public --add-port=22/tcp && \

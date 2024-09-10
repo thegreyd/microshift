@@ -10,10 +10,10 @@
 ---
 platforms:
   only:
-  - aarch64
   - x86_64
+  - aarch64
 tags:
 - assembly.microshift
 - v4.18
 - v4.18.0
-- v4.18.0.20240910.172114
+- v4.18.0.20240910.172157
